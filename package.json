@@ -10,7 +10,8 @@
     "lint": "biome check .",
     "format": "biome check --write .",
     "typecheck": "tsc -b --noEmit",
-    "prepare": "lefthook install"
+    "prepare": "lefthook install",
+    "a11y": "tsx scripts/axe-scan.ts"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.3.0",
@@ -20,12 +21,15 @@
     "tailwindcss": "^4.3.3"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@biomejs/biome": "^2.5.14",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
     "lefthook": "^2.1.14",
+    "playwright": "^1.63.0",
+    "tsx": "^4.23.13",
     "typescript": "~6.0.2",
     "vite": "^8.3.0"
   }

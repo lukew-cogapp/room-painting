@@ -6,7 +6,7 @@
  */
 import { writeFileSync } from 'node:fs'
 import sharp from 'sharp'
-import { hexToRgb, luma, shadePixel } from '../src/lib/colour'
+import { hexToRgb, luma, relativeLuma, shadePixel } from '../src/lib/colour'
 
 const SOURCE = process.argv[2]
 const TARGET = process.argv[3] ?? '#29a3d9'
@@ -33,19 +33,31 @@ const run = async () => {
   const target = hexToRgb(TARGET)
   const targetLuma = luma(target.r, target.g, target.b)
 
-  for (const desat of [0, 0.35, 0.55, 0.75]) {
+  let sum = 0
+  let n = 0
+  for (let p = 0; p < width * height; p++) {
+    const i = p * channels
+    if (!isWall(data[i], data[i + 1], data[i + 2])) continue
+    sum += luma(data[i], data[i + 1], data[i + 2])
+    n++
+  }
+  const wallLuma = n === 0 ? 128 : sum / n
+  console.log(`  wall mean luma ${wallLuma.toFixed(0)}, target luma ${targetLuma.toFixed(0)}`)
+
+  for (const desat of [0.55]) {
     const out = Buffer.from(data)
     let painted = 0
     for (let p = 0; p < width * height; p++) {
       const i = p * channels
       if (!isWall(data[i], data[i + 1], data[i + 2])) continue
       painted++
-      const s = shadePixel(luma(data[i], data[i + 1], data[i + 2]), target, targetLuma, desat)
+      const shifted = relativeLuma(luma(data[i], data[i + 1], data[i + 2]), wallLuma, targetLuma)
+      const s = shadePixel(shifted, target, targetLuma, desat)
       out[i] = s.r
       out[i + 1] = s.g
       out[i + 2] = s.b
     }
-    const file = `${OUT_DIR}/recolour-${Math.round(desat * 100)}.png`
+    const file = `${OUT_DIR}/recolour-${TARGET.slice(1)}.png`
     await sharp(out, { raw: { width, height, channels } }).png().toFile(file)
     console.log(`  desat ${desat}: ${((painted / (width * height)) * 100).toFixed(1)}% painted -> ${file}`)
   }

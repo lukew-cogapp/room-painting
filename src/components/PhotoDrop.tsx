@@ -55,6 +55,7 @@ export const PhotoDrop = ({ onFile, busy }: Props) => {
         ref={inputRef}
         type="file"
         accept="image/*"
+        aria-label="Choose a room photo"
         disabled={busy}
         onChange={(e) => {
           const file = e.target.files?.[0]

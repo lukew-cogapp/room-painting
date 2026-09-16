@@ -22,6 +22,11 @@ be judged by eye rather than asserted about in the abstract.
 npx tsx scripts/preview-recolour.ts <photo.jpg> '#29a3d9' <out-dir>
 ```
 
+`npm run a11y` runs axe against a dev server the user is already running. It
+walks four states — landing, editor, results grid, enlarged preview — because
+most controls only mount after a photo is loaded and variants generated, and
+axe only sees rendered DOM. Keep it at zero violations.
+
 Lefthook runs biome and `tsc -b --noEmit` on pre-commit. Both must pass.
 
 ## Architecture

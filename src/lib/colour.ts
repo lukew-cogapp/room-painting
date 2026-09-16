@@ -30,6 +30,21 @@ export const DEFAULT_DESATURATION = 0.55
 const towardGrey = (channel: number, pixelLuma: number, amount: number) =>
   channel + (pixelLuma - channel) * amount
 
+/**
+ * Re-centre a wall pixel's luma around the target colour's own lightness.
+ *
+ * Keeping the source luma outright gives a dark paint and a light paint the
+ * same output, because only hue and saturation ever change. Shading has to be
+ * relative to the wall's average instead, so the swatch sets the overall
+ * lightness and the photo only supplies the variation around it.
+ */
+export const relativeLuma = (srcLuma: number, wallLuma: number, targetLuma: number) => {
+  const spread = srcLuma - wallLuma
+  const headroom = spread >= 0 ? 255 - targetLuma : targetLuma
+  const reference = spread >= 0 ? 255 - wallLuma : wallLuma
+  return targetLuma + spread * (reference < 1 ? 1 : headroom / reference)
+}
+
 export const shadePixel = (
   srcLuma: number,
   target: Rgb,

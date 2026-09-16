@@ -21,7 +21,12 @@ const Thumb = ({ variant, onOpen }: { variant: Variant; onOpen: () => void }) =>
   useEffect(() => drawTo(ref.current, variant.image), [variant.image])
   return (
     <figure className="overflow-hidden rounded-lg border border-slate-700 bg-slate-900">
-      <button type="button" onClick={onOpen} className="block w-full">
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-label={`Enlarge preview of ${variant.hex}`}
+        className="block w-full"
+      >
         <canvas ref={ref} className="w-full object-cover" />
       </button>
       <figcaption className="flex items-center justify-between gap-2 px-3 py-2 text-sm">

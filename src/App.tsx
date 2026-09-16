@@ -46,7 +46,7 @@ const Panel = ({ title, children }: { title: string; children: React.ReactNode }
 )
 
 const toolButton = (active: boolean) =>
-  `rounded px-3 py-1.5 text-sm ${active ? 'bg-sky-600 text-white' : 'bg-slate-700 text-slate-200 hover:bg-slate-600'}`
+  `rounded px-3 py-1.5 text-sm ${active ? 'bg-sky-700 text-white' : 'bg-slate-700 text-slate-200 hover:bg-slate-600'}`
 
 const App = () => {
   const [original, setOriginal] = useState<ImageData | null>(null)
@@ -255,13 +255,13 @@ const App = () => {
                   type="button"
                   onClick={() => segmenter.detect(corrected)}
                   disabled={segmenter.busy}
-                  className="w-full rounded bg-emerald-600 px-3 py-2 text-sm font-medium hover:bg-emerald-500 disabled:opacity-50"
+                  className="w-full rounded bg-green-700 px-3 py-2 text-sm font-medium hover:bg-green-800 disabled:opacity-50"
                 >
                   {segmenter.busy ? 'Working…' : 'Detect walls automatically'}
                 </button>
                 {segmenter.error && <p className="text-xs text-rose-400">{segmenter.error}</p>}
                 {hasConfidence && (
-                  <label className="block text-xs text-slate-400">
+                  <label className="block text-xs text-slate-300">
                     Detection sensitivity: {sensitivity}%
                     <input
                       type="range"
@@ -275,14 +275,14 @@ const App = () => {
                       }}
                       className="w-full"
                     />
-                    <span className="text-slate-500">
+                    <span className="text-slate-400">
                       Lower grabs more of the uncertain edges. Re-thresholds instantly, no
                       re-detection.
                     </span>
                   </label>
                 )}
                 <div className="border-slate-700 border-t pt-3">
-                  <p className="mb-2 text-xs text-slate-500">
+                  <p className="mb-2 text-xs text-slate-400">
                     Fix it by hand. These tools edit the selection; they do not change what
                     auto-detect finds.
                   </p>
@@ -349,6 +349,7 @@ const App = () => {
                 <div className="flex items-center gap-2">
                   <input
                     type="color"
+                    aria-label="Wall colour"
                     value={picker}
                     onChange={(e) => setPicker(e.target.value)}
                     className="size-9 rounded border border-slate-600 bg-transparent"
@@ -377,7 +378,7 @@ const App = () => {
                     </li>
                   ))}
                 </ul>
-                <label className="block text-xs text-slate-400">
+                <label className="block text-xs text-slate-300">
                   Realism: {realism}%
                   <input
                     type="range"
@@ -387,7 +388,7 @@ const App = () => {
                     onChange={(e) => setRealism(Number(e.target.value))}
                     className="w-full"
                   />
-                  <span className="text-slate-500">
+                  <span className="text-slate-400">
                     Higher washes the colour out toward the light, like real paint. 0% keeps the
                     swatch exact and reads flat.
                   </span>
@@ -396,7 +397,7 @@ const App = () => {
                   type="button"
                   onClick={generate}
                   disabled={!mask || colours.length === 0}
-                  className="w-full rounded bg-sky-600 px-3 py-2 text-sm font-medium hover:bg-sky-500 disabled:opacity-50"
+                  className="w-full rounded bg-sky-700 px-3 py-2 text-sm font-medium hover:bg-sky-800 disabled:opacity-50"
                 >
                   Generate {colours.length} version{colours.length === 1 ? '' : 's'}
                 </button>
