@@ -17,10 +17,21 @@ let ready: Promise<{
   processor: Awaited<ReturnType<typeof AutoProcessor.from_pretrained>>
 }> | null = null
 
+/**
+ * Weight downloads report bytes; the ~27 MB ONNX runtime that precedes them
+ * does not, so the bar only appears once weights start and the runtime fetch
+ * is covered by an indeterminate message instead.
+ */
+const trackProgress = (report: { status: string; progress?: number }) => {
+  if (report.status === 'progress' && typeof report.progress === 'number') {
+    post({ type: 'status', message: 'Downloading model weights', progress: report.progress })
+  }
+}
+
 const load = () => {
   ready ??= (async () => {
     const [model, processor] = await Promise.all([
-      AutoModel.from_pretrained(MODEL_ID, { dtype: 'q8' }),
+      AutoModel.from_pretrained(MODEL_ID, { dtype: 'q8', progress_callback: trackProgress }),
       AutoProcessor.from_pretrained(MODEL_ID),
     ])
     return { model, processor }
@@ -31,7 +42,7 @@ const load = () => {
 self.onmessage = async (event: MessageEvent<SegmentRequest>) => {
   const { width, height, buffer } = event.data
   try {
-    post({ type: 'status', message: 'Preparing model', progress: 0 })
+    post({ type: 'status', message: 'Fetching runtime (~27 MB, first run only)' })
     const { model, processor } = await load()
 
     post({ type: 'status', message: 'Finding walls' })
