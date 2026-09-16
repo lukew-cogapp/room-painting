@@ -1,4 +1,4 @@
-import { luma, type Rgb, relativeLuma, shadePixel } from './colour'
+import { illumination, luma, type Rgb, shadePixel } from './colour'
 
 export type Mask = Uint8Array
 
@@ -131,6 +131,20 @@ export const featherMask = (mask: Mask, width: number, height: number, radius: n
   return pass(pass(mask, true), false)
 }
 
+/** Mean luma over the masked pixels, the reference illumination is relative to. */
+const meanLuma = (src: ImageData, mask: Mask): number => {
+  const s = src.data
+  let sum = 0
+  let count = 0
+  for (let p = 0; p < mask.length; p++) {
+    if (mask[p] === 0) continue
+    const i = p * 4
+    sum += luma(s[i], s[i + 1], s[i + 2])
+    count++
+  }
+  return count === 0 ? 128 : sum / count
+}
+
 export const recolour = (
   src: ImageData,
   mask: Mask,
@@ -140,24 +154,14 @@ export const recolour = (
   const out = new ImageData(new Uint8ClampedArray(src.data), src.width, src.height)
   const d = out.data
   const s = src.data
-  const targetLuma = luma(target.r, target.g, target.b)
-
-  let sum = 0
-  let count = 0
-  for (let p = 0; p < mask.length; p++) {
-    if (mask[p] === 0) continue
-    const i = p * 4
-    sum += luma(s[i], s[i + 1], s[i + 2])
-    count++
-  }
-  const wallLuma = count === 0 ? 128 : sum / count
+  const wallLuma = meanLuma(src, mask)
 
   for (let p = 0; p < mask.length; p++) {
     const a = mask[p]
     if (a === 0) continue
     const i = p * 4
-    const shifted = relativeLuma(luma(s[i], s[i + 1], s[i + 2]), wallLuma, targetLuma)
-    const painted = shadePixel(shifted, target, targetLuma, desaturation)
+    const illum = illumination(luma(s[i], s[i + 1], s[i + 2]), wallLuma)
+    const painted = shadePixel(illum, target, desaturation)
     const w = a / 255
     d[i] = s[i] + (painted.r - s[i]) * w
     d[i + 1] = s[i + 1] + (painted.g - s[i + 1]) * w

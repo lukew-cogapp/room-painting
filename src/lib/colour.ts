@@ -27,45 +27,62 @@ const clamp255 = (v: number) => (v < 0 ? 0 : v > 255 ? 255 : v)
  */
 export const DEFAULT_DESATURATION = 0.55
 
+/**
+ * How much of the photo's illumination range survives into the repaint.
+ *
+ * A room lit through two windows spans a 4-5x illumination ratio between
+ * sunlit and shadowed wall. Carrying that through wholesale means a mid-tone
+ * swatch still renders light where the sun hits, so the wall never reads as
+ * the colour that was picked. Real paint under the same light does vary, but
+ * far less than the raw ratio suggests, because the eye adapts locally.
+ */
+export const ILLUMINATION_RANGE = 0.35
+
+/** How far the brightest wall pixels lerp toward white, for sheen. */
+export const HIGHLIGHT_RANGE = 0.35
+
 const towardGrey = (channel: number, pixelLuma: number, amount: number) =>
   channel + (pixelLuma - channel) * amount
 
 /**
- * Re-centre a wall pixel's luma around the target colour's own lightness.
+ * Relative illumination at a pixel, as a multiple of the wall's average.
  *
- * Keeping the source luma outright gives a dark paint and a light paint the
- * same output, because only hue and saturation ever change. Shading has to be
- * relative to the wall's average instead, so the swatch sets the overall
- * lightness and the photo only supplies the variation around it.
+ * Shading is multiplicative: a wall in half the light reads at half the
+ * value, whatever colour it is painted. Treating it as an additive offset
+ * instead (target luma plus the source's deviation from the mean) needs a
+ * different gain either side of the mean, and those gains diverge badly for
+ * pale paint, flattening highlights while stretching shadows.
+ *
+ * The ratio is compressed toward 1 so the photo's full range does not survive
+ * into the result; see `ILLUMINATION_RANGE`.
  */
-export const relativeLuma = (srcLuma: number, wallLuma: number, targetLuma: number) => {
-  const spread = srcLuma - wallLuma
-  const headroom = spread >= 0 ? 255 - targetLuma : targetLuma
-  const reference = spread >= 0 ? 255 - wallLuma : wallLuma
-  return targetLuma + spread * (reference < 1 ? 1 : headroom / reference)
+export const illumination = (srcLuma: number, wallLuma: number) => {
+  const ratio = wallLuma < 1 ? 1 : srcLuma / wallLuma
+  return 1 + (ratio - 1) * ILLUMINATION_RANGE
 }
 
 export const shadePixel = (
-  srcLuma: number,
+  illum: number,
   target: Rgb,
-  targetLuma: number,
   desaturation = DEFAULT_DESATURATION,
 ): Rgb => {
   let r: number
   let g: number
   let b: number
-  if (srcLuma <= targetLuma) {
-    const k = targetLuma === 0 ? 0 : srcLuma / targetLuma
-    r = target.r * k
-    g = target.g * k
-    b = target.b * k
+  if (illum <= 1) {
+    r = target.r * illum
+    g = target.g * illum
+    b = target.b * illum
   } else {
-    const k = (srcLuma - targetLuma) / (255 - targetLuma || 1)
+    // Above the wall average there is no headroom to scale into, so the extra
+    // light shows as the surface washing toward white rather than as a
+    // brighter version of the paint.
+    const k = Math.min(1, (illum - 1) * HIGHLIGHT_RANGE)
     r = target.r + (255 - target.r) * k
     g = target.g + (255 - target.g) * k
     b = target.b + (255 - target.b) * k
   }
-  const wash = (srcLuma / 255) * desaturation
+  const wash = Math.min(1, illum) * desaturation * HIGHLIGHT_RANGE
   const pixelLuma = luma(r, g, b)
   return {
     r: clamp255(towardGrey(r, pixelLuma, wash)),
