@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { buildContactSheet, downloadCanvas } from '../lib/contactSheet'
 
 export type Variant = { hex: string; image: ImageData }
 
@@ -12,15 +13,7 @@ const drawTo = (canvas: HTMLCanvasElement | null, image: ImageData) => {
 const download = (image: ImageData, hex: string) => {
   const canvas = document.createElement('canvas')
   drawTo(canvas, image)
-  canvas.toBlob((blob) => {
-    if (!blob) return
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `room-${hex.slice(1)}.png`
-    link.click()
-    URL.revokeObjectURL(url)
-  }, 'image/png')
+  downloadCanvas(canvas, `room-${hex.slice(1)}.png`)
 }
 
 const Thumb = ({ variant, onOpen }: { variant: Variant; onOpen: () => void }) => {
@@ -51,7 +44,13 @@ const Thumb = ({ variant, onOpen }: { variant: Variant; onOpen: () => void }) =>
   )
 }
 
-export const ResultGrid = ({ variants }: { variants: Variant[] }) => {
+export const ResultGrid = ({
+  variants,
+  original,
+}: {
+  variants: Variant[]
+  original: ImageData | null
+}) => {
   const [open, setOpen] = useState<Variant | null>(null)
   const large = useRef<HTMLCanvasElement>(null)
   useEffect(() => {
@@ -62,7 +61,22 @@ export const ResultGrid = ({ variants }: { variants: Variant[] }) => {
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-medium text-slate-300">Results</h2>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-sm font-medium text-slate-300">Results</h2>
+        <button
+          type="button"
+          onClick={() => {
+            const cells = [
+              ...(original ? [{ label: 'Original', image: original }] : []),
+              ...variants.map((v) => ({ label: v.hex, image: v.image, swatch: v.hex })),
+            ]
+            downloadCanvas(buildContactSheet(cells), 'room-comparison.png')
+          }}
+          className="rounded bg-slate-700 px-3 py-1.5 text-sm hover:bg-slate-600"
+        >
+          Download comparison sheet
+        </button>
+      </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {variants.map((v) => (
           <Thumb key={v.hex} variant={v} onOpen={() => setOpen(v)} />

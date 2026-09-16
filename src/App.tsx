@@ -383,7 +383,7 @@ const App = () => {
             </div>
           </div>
 
-          <ResultGrid variants={variants} />
+          <ResultGrid variants={variants} original={corrected} />
         </>
       )}
     </main>
