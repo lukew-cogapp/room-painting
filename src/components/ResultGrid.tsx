@@ -25,9 +25,14 @@ const Thumb = ({ variant, onOpen }: { variant: Variant; onOpen: () => void }) =>
         type="button"
         onClick={onOpen}
         aria-label={`Enlarge preview of ${variant.hex}`}
-        className="block w-full"
+        className="group relative block w-full cursor-zoom-in"
       >
         <canvas ref={ref} className="w-full object-cover" />
+        <span className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+          <span className="rounded bg-slate-900/90 px-2 py-1 text-xs font-medium text-slate-100">
+            Click to enlarge
+          </span>
+        </span>
       </button>
       <figcaption className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
         <span className="flex items-center gap-2">
@@ -94,13 +99,25 @@ export const ResultGrid = ({
           onKeyDown={(e) => e.key === 'Escape' && setOpen(null)}
           className="fixed inset-0 z-10 m-0 flex size-full items-center justify-center bg-black/80 p-6"
         >
+          {/* Backdrop dismiss duplicates the Close button, so it carries no
+              accessible name of its own; the canvas above it keeps one. */}
+          <div
+            aria-hidden="true"
+            onClick={() => setOpen(null)}
+            className="absolute inset-0 cursor-zoom-out"
+          />
+          <canvas
+            ref={large}
+            aria-label={`Enlarged preview of ${open.hex}`}
+            role="img"
+            className="pointer-events-none relative max-h-[90vh] max-w-full rounded-lg object-contain"
+          />
           <button
             type="button"
-            aria-label="Close preview"
             onClick={() => setOpen(null)}
-            className="flex size-full items-center justify-center"
+            className="absolute right-6 top-6 rounded bg-slate-800/90 px-3 py-1.5 text-sm font-medium text-slate-100 hover:bg-slate-700"
           >
-            <canvas ref={large} className="max-h-[90vh] max-w-full rounded-lg object-contain" />
+            Close
           </button>
         </dialog>
       )}
