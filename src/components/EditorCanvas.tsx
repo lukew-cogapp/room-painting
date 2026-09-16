@@ -5,6 +5,9 @@ export type Tool = 'wand' | 'brush' | 'erase' | 'dropper' | 'grey'
 type Props = {
   image: ImageData | null
   mask: Uint8Array | null
+  /** Bumped on every mask edit; the mask is mutated in place, so its identity
+   *  alone would not tell React to repaint. */
+  maskVersion: number
   brushSize: number
   tool: Tool
   onPick: (x: number, y: number, drag: boolean) => void
@@ -12,10 +15,11 @@ type Props = {
 
 const MASK_TINT = [56, 189, 248] as const
 
-export const EditorCanvas = ({ image, mask, brushSize, tool, onPick }: Props) => {
+export const EditorCanvas = ({ image, mask, maskVersion, brushSize, tool, onPick }: Props) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const dragging = useRef(false)
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: maskVersion is the only signal that in-place mask edits happened
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas || !image) return
@@ -40,7 +44,7 @@ export const EditorCanvas = ({ image, mask, brushSize, tool, onPick }: Props) =>
       d[i + 2] += (MASK_TINT[2] - d[i + 2]) * w
     }
     ctx.putImageData(overlay, 0, 0)
-  }, [image, mask])
+  }, [image, mask, maskVersion])
 
   const toImageCoords = useCallback((event: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current

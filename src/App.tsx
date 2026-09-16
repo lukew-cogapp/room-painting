@@ -158,7 +158,8 @@ const App = () => {
               )}
               <EditorCanvas
                 image={corrected}
-                mask={maskVersion >= 0 ? mask : null}
+                mask={mask}
+                maskVersion={maskVersion}
                 brushSize={brushSize}
                 tool={tool}
                 onPick={handlePick}
@@ -221,21 +222,27 @@ const App = () => {
                   {segmenter.busy ? 'Working…' : 'Detect walls automatically'}
                 </button>
                 {segmenter.error && <p className="text-xs text-rose-400">{segmenter.error}</p>}
-                <div className="flex flex-wrap gap-2">
-                  {(['wand', 'brush', 'erase'] as const).map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => setTool(t)}
-                      className={toolButton(tool === t)}
-                    >
-                      {t === 'wand' ? 'Magic wand' : t === 'brush' ? 'Brush' : 'Erase'}
-                    </button>
-                  ))}
+                <div className="border-slate-700 border-t pt-3">
+                  <p className="mb-2 text-xs text-slate-500">
+                    Fix it by hand. These tools edit the selection; they do not change what
+                    auto-detect finds.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {(['wand', 'brush', 'erase'] as const).map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setTool(t)}
+                        className={toolButton(tool === t)}
+                      >
+                        {t === 'wand' ? 'Magic wand' : t === 'brush' ? 'Brush' : 'Erase'}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 {tool === 'wand' && (
                   <label className="block text-xs text-slate-400">
-                    Tolerance: {tolerance}
+                    Magic wand tolerance: {tolerance}
                     <input
                       type="range"
                       min={2}
