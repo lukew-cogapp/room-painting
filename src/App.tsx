@@ -3,7 +3,7 @@ import { EditorCanvas, type Tool } from './components/EditorCanvas'
 import { Loader } from './components/Loader'
 import { PhotoDrop } from './components/PhotoDrop'
 import { ResultGrid, type Variant } from './components/ResultGrid'
-import { DEFAULT_DESATURATION, hexToRgb } from './lib/colour'
+import { DEFAULT_DESATURATION, hexToRgb, rgbToHex } from './lib/colour'
 import {
   createMask,
   featherMask,
@@ -12,6 +12,7 @@ import {
   recolour,
   thresholdConfidence,
 } from './lib/mask'
+import { PAINTS } from './lib/paints'
 import { useSegmenter } from './lib/useSegmenter'
 import {
   applyWhiteBalance,
@@ -21,7 +22,6 @@ import {
 } from './lib/whiteBalance'
 
 const MAX_EDGE = 1600
-const DEFAULT_SWATCHES = ['#e8e2d5', '#c9d6c4', '#9fb4c7', '#d8b9a0', '#8a8f9c', '#3b6ea5']
 
 const loadImageData = async (file: File): Promise<ImageData> => {
   const bitmap = await createImageBitmap(file)
@@ -57,7 +57,7 @@ const App = () => {
   const [tolerance, setTolerance] = useState(28)
   const [brushSize, setBrushSize] = useState(30)
   const [feather, setFeather] = useState(2)
-  const [colours, setColours] = useState<string[]>(DEFAULT_SWATCHES.slice(0, 3))
+  const [colours, setColours] = useState<string[]>([])
   const [picker, setPicker] = useState('#3b6ea5')
   const [variants, setVariants] = useState<Variant[]>([])
   const [loadingPhoto, setLoadingPhoto] = useState(false)
@@ -65,6 +65,7 @@ const App = () => {
   const [sensitivity, setSensitivity] = useState(50)
   const [realism, setRealism] = useState(Math.round(DEFAULT_DESATURATION * 100))
   const [hasConfidence, setHasConfidence] = useState(false)
+  const resultsRef = useRef<HTMLDivElement>(null)
   const maskRef = useRef<Uint8Array | null>(null)
   const confidenceRef = useRef<Uint8Array | null>(null)
   const sensitivityRef = useRef(sensitivity)
@@ -135,7 +136,7 @@ const App = () => {
     }
     if (tool === 'dropper') {
       const d = corrected.data
-      const hex = `#${[d[i], d[i + 1], d[i + 2]].map((v) => v.toString(16).padStart(2, '0')).join('')}`
+      const hex = rgbToHex({ r: d[i], g: d[i + 1], b: d[i + 2] })
       setPicker(hex)
       setColours((prev) => (prev.includes(hex) ? prev : [...prev, hex]))
       return
@@ -164,6 +165,7 @@ const App = () => {
         })),
       )
       setGenerating(false)
+      resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     })
   }
 
@@ -365,6 +367,41 @@ const App = () => {
                     Eyedropper
                   </button>
                 </div>
+                <details className="text-xs">
+                  <summary className="cursor-pointer text-slate-300">Popular paint colours</summary>
+                  <ul className="mt-2 space-y-1">
+                    {PAINTS.map((paint) => {
+                      const picked = colours.includes(paint.hex)
+                      return (
+                        <li key={paint.hex}>
+                          <button
+                            type="button"
+                            aria-pressed={picked}
+                            onClick={() =>
+                              setColours((prev) =>
+                                picked ? prev.filter((c) => c !== paint.hex) : [...prev, paint.hex],
+                              )
+                            }
+                            className={`flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-slate-800 ${
+                              picked ? 'bg-slate-800' : ''
+                            }`}
+                          >
+                            <span
+                              className="size-5 shrink-0 rounded border border-slate-600"
+                              style={{ background: paint.hex }}
+                            />
+                            <span className="text-slate-200">{paint.name}</span>
+                            <span className="text-slate-400">{paint.brand}</span>
+                            {picked && <span className="ml-auto text-slate-400">Added</span>}
+                          </button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                  <p className="mt-2 text-slate-400">
+                    Approximations from colour databases, not brand data. Always check a tester pot.
+                  </p>
+                </details>
                 <ul className="flex flex-wrap gap-2">
                   {colours.map((hex) => (
                     <li key={hex}>
@@ -405,7 +442,9 @@ const App = () => {
             </div>
           </div>
 
-          <ResultGrid variants={variants} original={corrected} />
+          <div ref={resultsRef}>
+            <ResultGrid variants={variants} original={corrected} />
+          </div>
         </>
       )}
     </main>
