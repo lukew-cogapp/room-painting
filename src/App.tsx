@@ -62,6 +62,8 @@ const App = () => {
     [original, wb],
   )
 
+  const greySet = wb.gains.some((g) => g !== 1)
+
   const setMaskData = useCallback((next: Uint8Array | null) => {
     maskRef.current = next
     setMask(next)
@@ -90,9 +92,12 @@ const App = () => {
     if (px < 0 || py < 0 || px >= corrected.width || py >= corrected.height) return
     const i = (py * corrected.width + px) * 4
 
-    if (tool === 'grey') {
-      const d = corrected.data
+    // Sampled from the untouched photo: reading the corrected pixel would
+    // stack each pick on the last one and over-correct.
+    if (tool === 'grey' && original) {
+      const d = original.data
       setWb((prev) => ({ ...prev, gains: greyPointGains(d[i], d[i + 1], d[i + 2]) }))
+      setTool('wand')
       return
     }
     if (tool === 'dropper') {
@@ -167,8 +172,13 @@ const App = () => {
                   onClick={() => setTool('grey')}
                   className={toolButton(tool === 'grey')}
                 >
-                  Pick neutral grey
+                  {tool === 'grey' ? 'Click a grey area…' : 'Pick neutral grey'}
                 </button>
+                <p className="text-xs text-slate-400">
+                  {greySet
+                    ? 'Grey point set. The sliders adjust on top of it.'
+                    : 'No grey point set.'}
+                </p>
                 <label className="block text-xs text-slate-400">
                   Temperature
                   <input
@@ -194,9 +204,10 @@ const App = () => {
                 <button
                   type="button"
                   onClick={() => setWb(NEUTRAL_WB)}
-                  className="text-xs text-slate-400 underline"
+                  disabled={!greySet && wb.temp === 0 && wb.tint === 0}
+                  className="text-xs text-slate-400 underline disabled:opacity-40 disabled:no-underline"
                 >
-                  Reset
+                  Reset grey point and sliders
                 </button>
               </Panel>
 
