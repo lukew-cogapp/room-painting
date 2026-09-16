@@ -3,14 +3,29 @@ export type WhiteBalance = { temp: number; tint: number; gains: [number, number,
 export const NEUTRAL_WB: WhiteBalance = { temp: 0, tint: 0, gains: [1, 1, 1] }
 
 /**
- * Per-channel gains that would drag the sampled pixel to neutral grey.
+ * The luma a sampled grey point is lifted to.
  *
- * Normalised against green because the temp/tint sliders below also pivot on
- * green, so the two controls compose without fighting over overall exposure.
+ * Mid-grey rather than white: the pixel picked is a lit wall or a white surface
+ * in shade, not a specular highlight, so pinning it to 255 would blow out
+ * everything brighter than it.
+ */
+const GREY_TARGET = 168
+
+/** Ceiling on the exposure lift, so an almost-black sample cannot blow the photo out. */
+const MAX_LIFT = 2.2
+
+/**
+ * Per-channel gains that drag the sampled pixel to a neutral mid-grey.
+ *
+ * The ratios between the channels neutralise the light's colour; their overall
+ * magnitude corrects exposure. A room shot against its own windows meters for
+ * the glass, so correcting hue alone leaves the walls dim and the eyedropper
+ * reporting the muddy values that really are in the file.
  */
 export const greyPointGains = (r: number, g: number, b: number): [number, number, number] => {
   const safe = (v: number) => (v < 1 ? 1 : v)
-  return [g / safe(r), 1, g / safe(b)]
+  const lift = Math.min(MAX_LIFT, GREY_TARGET / safe(g))
+  return [(g / safe(r)) * lift, lift, (g / safe(b)) * lift]
 }
 
 const TEMP_STRENGTH = 0.4
