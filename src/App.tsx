@@ -4,7 +4,14 @@ import { Loader } from './components/Loader'
 import { PhotoDrop } from './components/PhotoDrop'
 import { ResultGrid, type Variant } from './components/ResultGrid'
 import { hexToRgb } from './lib/colour'
-import { createMask, featherMask, floodFill, paintBrush, recolour } from './lib/mask'
+import {
+  createMask,
+  featherMask,
+  floodFill,
+  paintBrush,
+  recolour,
+  thresholdConfidence,
+} from './lib/mask'
 import { useSegmenter } from './lib/useSegmenter'
 import {
   applyWhiteBalance,
@@ -55,7 +62,12 @@ const App = () => {
   const [variants, setVariants] = useState<Variant[]>([])
   const [loadingPhoto, setLoadingPhoto] = useState(false)
   const [generating, setGenerating] = useState(false)
+  const [sensitivity, setSensitivity] = useState(50)
+  const [hasConfidence, setHasConfidence] = useState(false)
   const maskRef = useRef<Uint8Array | null>(null)
+  const confidenceRef = useRef<Uint8Array | null>(null)
+  const sensitivityRef = useRef(sensitivity)
+  sensitivityRef.current = sensitivity
 
   const corrected = useMemo(
     () => (original ? applyWhiteBalance(original, wb) : null),
@@ -70,7 +82,25 @@ const App = () => {
     setMaskVersion((v) => v + 1)
   }, [])
 
-  const segmenter = useSegmenter(setMaskData)
+  const applyThreshold = useCallback(
+    (percent: number) => {
+      const confidence = confidenceRef.current
+      if (!confidence) return
+      setMaskData(thresholdConfidence(confidence, (percent / 100) * 255))
+    },
+    [setMaskData],
+  )
+
+  const segmenter = useSegmenter(
+    useCallback(
+      (confidence: Uint8Array) => {
+        confidenceRef.current = confidence
+        setHasConfidence(true)
+        setMaskData(thresholdConfidence(confidence, (sensitivityRef.current / 100) * 255))
+      },
+      [setMaskData],
+    ),
+  )
 
   const handleFile = async (file: File) => {
     setLoadingPhoto(true)
@@ -79,6 +109,8 @@ const App = () => {
       setOriginal(data)
       setWb(NEUTRAL_WB)
       setMaskData(null)
+      confidenceRef.current = null
+      setHasConfidence(false)
       setVariants([])
     } finally {
       setLoadingPhoto(false)
@@ -222,6 +254,27 @@ const App = () => {
                   {segmenter.busy ? 'Working…' : 'Detect walls automatically'}
                 </button>
                 {segmenter.error && <p className="text-xs text-rose-400">{segmenter.error}</p>}
+                {hasConfidence && (
+                  <label className="block text-xs text-slate-400">
+                    Detection sensitivity: {sensitivity}%
+                    <input
+                      type="range"
+                      min={5}
+                      max={95}
+                      value={sensitivity}
+                      onChange={(e) => {
+                        const next = Number(e.target.value)
+                        setSensitivity(next)
+                        applyThreshold(next)
+                      }}
+                      className="w-full"
+                    />
+                    <span className="text-slate-500">
+                      Lower grabs more of the uncertain edges. Re-thresholds instantly, no
+                      re-detection.
+                    </span>
+                  </label>
+                )}
                 <div className="border-slate-700 border-t pt-3">
                   <p className="mb-2 text-xs text-slate-500">
                     Fix it by hand. These tools edit the selection; they do not change what

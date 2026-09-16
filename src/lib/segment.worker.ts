@@ -6,7 +6,9 @@ const WALL_CLASS = 0
 export type SegmentRequest = { width: number; height: number; buffer: ArrayBuffer }
 export type SegmentResponse =
   | { type: 'status'; message: string; progress?: number }
-  | { type: 'result'; mask: ArrayBuffer }
+  /** Per-pixel P(wall), 0-255. Thresholded on the main thread so the
+   *  sensitivity slider never re-runs inference. */
+  | { type: 'result'; confidence: ArrayBuffer }
   | { type: 'error'; message: string }
 
 const post = (msg: SegmentResponse, transfer: Transferable[] = []) =>
@@ -57,27 +59,37 @@ self.onmessage = async (event: MessageEvent<SegmentRequest>) => {
     const small = new Uint8Array(lh * lw)
     const plane = lh * lw
     for (let p = 0; p < plane; p++) {
-      let best = 0
-      let bestVal = data[p]
+      // Softmax, shifted by the max logit so exp() cannot overflow. Keeping the
+      // probability rather than the argmax is what lets the UI re-threshold.
+      let max = data[p]
       for (let c = 1; c < classes; c++) {
         const v = data[c * plane + p]
-        if (v > bestVal) {
-          bestVal = v
-          best = c
-        }
+        if (v > max) max = v
       }
-      small[p] = best === WALL_CLASS ? 255 : 0
+      let sum = 0
+      for (let c = 0; c < classes; c++) sum += Math.exp(data[c * plane + p] - max)
+      small[p] = Math.round((Math.exp(data[WALL_CLASS * plane + p] - max) / sum) * 255)
     }
 
-    const mask = new Uint8Array(width * height)
+    // Bilinear rather than nearest: the field is continuous now, and nearest
+    // would stair-step the boundary into the ~12x upscale.
+    const confidence = new Uint8Array(width * height)
     for (let y = 0; y < height; y++) {
-      const sy = Math.min(lh - 1, ((y * lh) / height) | 0)
+      const fy = Math.min(lh - 1, ((y + 0.5) * lh) / height - 0.5)
+      const y0 = Math.max(0, Math.floor(fy))
+      const y1 = Math.min(lh - 1, y0 + 1)
+      const wy = fy - y0
       for (let x = 0; x < width; x++) {
-        const sx = Math.min(lw - 1, ((x * lw) / width) | 0)
-        mask[y * width + x] = small[sy * lw + sx]
+        const fx = Math.min(lw - 1, ((x + 0.5) * lw) / width - 0.5)
+        const x0 = Math.max(0, Math.floor(fx))
+        const x1 = Math.min(lw - 1, x0 + 1)
+        const wx = fx - x0
+        const top = small[y0 * lw + x0] * (1 - wx) + small[y0 * lw + x1] * wx
+        const bottom = small[y1 * lw + x0] * (1 - wx) + small[y1 * lw + x1] * wx
+        confidence[y * width + x] = top * (1 - wy) + bottom * wy
       }
     }
-    post({ type: 'result', mask: mask.buffer }, [mask.buffer])
+    post({ type: 'result', confidence: confidence.buffer }, [confidence.buffer])
   } catch (error) {
     post({ type: 'error', message: error instanceof Error ? error.message : String(error) })
   }

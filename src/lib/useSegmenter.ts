@@ -8,7 +8,7 @@ export type SegmenterState = {
   error: string | null
 }
 
-export const useSegmenter = (onMask: (mask: Uint8Array) => void) => {
+export const useSegmenter = (onConfidence: (confidence: Uint8Array) => void) => {
   const workerRef = useRef<Worker | null>(null)
   const [state, setState] = useState<SegmenterState>({
     busy: false,
@@ -16,8 +16,8 @@ export const useSegmenter = (onMask: (mask: Uint8Array) => void) => {
     progress: null,
     error: null,
   })
-  const callback = useRef(onMask)
-  callback.current = onMask
+  const callback = useRef(onConfidence)
+  callback.current = onConfidence
 
   useEffect(() => {
     return () => {
@@ -44,7 +44,7 @@ export const useSegmenter = (onMask: (mask: Uint8Array) => void) => {
         setState({ busy: false, status: '', progress: null, error: msg.message })
       if (msg.type === 'result') {
         setState({ busy: false, status: '', progress: null, error: null })
-        callback.current(new Uint8Array(msg.mask))
+        callback.current(new Uint8Array(msg.confidence))
       }
     }
     setState({ busy: true, status: 'Starting', progress: null, error: null })

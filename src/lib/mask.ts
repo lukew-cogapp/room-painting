@@ -148,3 +148,22 @@ export const recolour = (src: ImageData, mask: Mask, target: Rgb): ImageData => 
   }
   return out
 }
+
+/**
+ * Threshold the model's per-pixel P(wall) into a mask.
+ *
+ * Values just above the cut are kept partly transparent so the boundary
+ * follows the model's own uncertainty instead of a hard step.
+ */
+export const thresholdConfidence = (confidence: Uint8Array, threshold: number): Mask => {
+  const out = new Uint8Array(confidence.length)
+  // Shrink the ramp near the top of the range, or a high threshold leaves no
+  // headroom above it and nothing ever reaches full opacity.
+  const soft = Math.max(1, Math.min(32, 255 - threshold))
+  for (let p = 0; p < confidence.length; p++) {
+    const c = confidence[p]
+    if (c <= threshold) continue
+    out[p] = c >= threshold + soft ? 255 : ((c - threshold) / soft) * 255
+  }
+  return out
+}
