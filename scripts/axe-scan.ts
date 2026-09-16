@@ -55,6 +55,8 @@ const run = async () => {
   console.log('\nSelecting a wall and generating variants…')
   const canvas = page.locator('canvas').first()
   await canvas.click({ position: { x: 40, y: 40 } })
+  // The colour list starts empty, so Generate stays disabled until one is added.
+  await page.getByRole('button', { name: 'Add' }).click()
   await page.getByRole('button', { name: /^Generate/ }).click()
   await page.waitForSelector('figure canvas', { timeout: 15000 })
   total += await scan(page, 'Results grid')

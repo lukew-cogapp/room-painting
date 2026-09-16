@@ -14,18 +14,24 @@ npm run build      # tsc -b && vite build
 
 There is no test framework. Verify image and colour maths by writing a script
 that imports the real module and prints numbers, or by rendering a PNG and
-looking at it. `scripts/preview-recolour.ts` is the worked example: it runs the
-production `shadePixel` over a real photo at several settings so the output can
-be judged by eye rather than asserted about in the abstract.
+looking at it. `scripts/preview-segmented.ts` is the worked example: it runs the
+real SegFormer mask and the production `recolour`, writing both the mask overlay
+and the result so each can be judged by eye.
 
 ```sh
-npx tsx scripts/preview-recolour.ts <photo.jpg> '#29a3d9' <out-dir>
+npx tsx scripts/preview-segmented.ts <photo.jpg> '#313e44' <out-dir> 50
 ```
 
+Approximating the mask by colour distance is not good enough to draw conclusions
+from. A previous harness did, and on a room whose curtains share the wall's hue
+it missed the whole shadowed wall and painted the bedding instead, which made
+every measurement taken through it describe the clutter.
+
 `npm run a11y` runs axe against a dev server the user is already running. It
-walks four states — landing, editor, results grid, enlarged preview — because
-most controls only mount after a photo is loaded and variants generated, and
-axe only sees rendered DOM. Keep it at zero violations.
+walks four states: landing, editor, results grid, enlarged preview. Most
+controls only mount after a photo is loaded and variants generated, and axe only
+sees rendered DOM. The colour list starts empty, so the script adds one before
+Generate becomes enabled. Keep it at zero violations.
 
 Lefthook runs biome and `tsc -b --noEmit` on pre-commit. Both must pass.
 
@@ -54,9 +60,29 @@ the corrected pixel folds the sliders into the gains and cancels them.
   multiplicative scaling holds the target's channel ratios at every luma, a
   vivid colour stays fully saturated in the darkest corner, and the wall reads
   as flat plastic. Real surfaces wash out toward the light.
+
+  Shading is modelled as a multiplicative illumination field: `illumination`
+  gives each pixel's brightness as a multiple of the wall's mean, and
+  `shadePixel` scales the paint by it. An earlier version added the source's
+  deviation from the mean to the target luma instead, which needs a different
+  gain either side of the mean; for pale paint those gains diverge by 20x or
+  more, flattening highlights while stretching shadows.
+
+  `ILLUMINATION_RANGE` compresses that field toward 1. A room lit through two
+  windows spans a 4-5x ratio, and carrying it through wholesale means a
+  mid-tone swatch still renders light where the sun falls, so the wall never
+  reads as the colour picked.
+
+  Eyedropping a patch already painted on the wall needs no correction: the
+  illumination field is relative to the wall mean, so the sampled value is what
+  the wall averages out to. An earlier inverse here made the wall lighter than
+  the patch.
 - **`mask.ts`** — flood fill, brush, feather, `thresholdConfidence`, and
   `recolour`. A mask is a `Uint8Array` of per-pixel alpha, one byte per pixel,
   not per RGBA group.
+- **`paints.ts`** — ten named UK paint colours for the picker. The hex values are
+  database approximations, not brand-supplied, so the panel says so: a screen
+  cannot reproduce a paint, and the numbers disagree between sources.
 - **`whiteBalance.ts`** — the grey point (`gains`) and the temp/tint sliders are
   separate corrections that multiply together in `combinedGains`. Both pivot on
   green so they do not fight over exposure.
