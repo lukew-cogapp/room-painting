@@ -131,7 +131,12 @@ export const featherMask = (mask: Mask, width: number, height: number, radius: n
   return pass(pass(mask, true), false)
 }
 
-export const recolour = (src: ImageData, mask: Mask, target: Rgb): ImageData => {
+export const recolour = (
+  src: ImageData,
+  mask: Mask,
+  target: Rgb,
+  desaturation?: number,
+): ImageData => {
   const out = new ImageData(new Uint8ClampedArray(src.data), src.width, src.height)
   const d = out.data
   const s = src.data
@@ -140,7 +145,7 @@ export const recolour = (src: ImageData, mask: Mask, target: Rgb): ImageData => 
     const a = mask[p]
     if (a === 0) continue
     const i = p * 4
-    const painted = shadePixel(luma(s[i], s[i + 1], s[i + 2]), target, targetLuma)
+    const painted = shadePixel(luma(s[i], s[i + 1], s[i + 2]), target, targetLuma, desaturation)
     const w = a / 255
     d[i] = s[i] + (painted.r - s[i]) * w
     d[i + 1] = s[i + 1] + (painted.g - s[i + 1]) * w

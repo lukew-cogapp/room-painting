@@ -3,7 +3,7 @@ import { EditorCanvas, type Tool } from './components/EditorCanvas'
 import { Loader } from './components/Loader'
 import { PhotoDrop } from './components/PhotoDrop'
 import { ResultGrid, type Variant } from './components/ResultGrid'
-import { hexToRgb } from './lib/colour'
+import { DEFAULT_DESATURATION, hexToRgb } from './lib/colour'
 import {
   createMask,
   featherMask,
@@ -63,6 +63,7 @@ const App = () => {
   const [loadingPhoto, setLoadingPhoto] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [sensitivity, setSensitivity] = useState(50)
+  const [realism, setRealism] = useState(Math.round(DEFAULT_DESATURATION * 100))
   const [hasConfidence, setHasConfidence] = useState(false)
   const maskRef = useRef<Uint8Array | null>(null)
   const confidenceRef = useRef<Uint8Array | null>(null)
@@ -156,7 +157,12 @@ const App = () => {
     setGenerating(true)
     requestAnimationFrame(() => {
       const soft = featherMask(mask, corrected.width, corrected.height, feather)
-      setVariants(colours.map((hex) => ({ hex, image: recolour(corrected, soft, hexToRgb(hex)) })))
+      setVariants(
+        colours.map((hex) => ({
+          hex,
+          image: recolour(corrected, soft, hexToRgb(hex), realism / 100),
+        })),
+      )
       setGenerating(false)
     })
   }
@@ -371,6 +377,21 @@ const App = () => {
                     </li>
                   ))}
                 </ul>
+                <label className="block text-xs text-slate-400">
+                  Realism: {realism}%
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={realism}
+                    onChange={(e) => setRealism(Number(e.target.value))}
+                    className="w-full"
+                  />
+                  <span className="text-slate-500">
+                    Higher washes the colour out toward the light, like real paint. 0% keeps the
+                    swatch exact and reads flat.
+                  </span>
+                </label>
                 <button
                   type="button"
                   onClick={generate}
